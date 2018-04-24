@@ -367,6 +367,7 @@ pub enum Ty {
     String,
     Bytes,
     Enumeration(Path),
+    EnumerationAsEnum(Path),
 }
 
 impl Ty {
@@ -391,11 +392,26 @@ impl Ty {
             Meta::NameValue(MetaNameValue { ref ident, lit: Lit::Str(ref l), .. }) if ident == "enumeration" => {
                 Ty::Enumeration(parse_str::<Path>(&l.value())?)
             },
+            Meta::NameValue(MetaNameValue { ref ident, lit: Lit::Str(ref l), .. }) if ident == "enumeration_as_enum" => {
+                Ty::EnumerationAsEnum(parse_str::<Path>(&l.value())?)
+            },
             Meta::List(MetaList { ref ident, ref nested, .. }) if ident == "enumeration" => {
                 // TODO(rustlang/rust#23121): slice pattern matching would make this much nicer.
                 if nested.len() == 1 {
                     if let NestedMeta::Meta(Meta::Word(ref ident)) = nested[0] {
                         Ty::Enumeration(Path::from(ident.clone()))
+                    } else {
+                        bail!("invalid enumeration attribute: item must be an identifier");
+                    }
+                } else {
+                    bail!("invalid enumeration attribute: only a single identifier is supported");
+                }
+            },
+            Meta::List(MetaList { ref ident, ref nested, .. }) if ident == "enumeration_as_enum" => {
+                // TODO(rustlang/rust#23121): slice pattern matching would make this much nicer.
+                if nested.len() == 1 {
+                    if let NestedMeta::Meta(Meta::Word(ref ident)) = nested[0] {
+                        Ty::EnumerationAsEnum(Path::from(ident.clone()))
                     } else {
                         bail!("invalid enumeration attribute: item must be an identifier");
                     }
@@ -410,6 +426,7 @@ impl Ty {
 
     pub fn from_str(s: &str) -> Result<Ty, Error> {
         let enumeration_len = "enumeration".len();
+        let enumeration_as_enum_len = "enumeration_as_enum".len();
         let error = Err(format_err!("invalid type: {}", s));
         let ty = match s.trim() {
             "float" => Ty::Float,
@@ -440,6 +457,19 @@ impl Ty {
 
                 Ty::Enumeration(parse_str::<Path>(s[1..s.len() - 1].trim())?)
             },
+            s if s.len() > enumeration_as_enum_len && &s[..enumeration_as_enum_len] == "enumeration_as_enum" => {
+                let s = &s[enumeration_as_enum_len..].trim();
+                match s.chars().next() {
+                    Some('<') | Some('(') => (),
+                    _ => return error,
+                }
+                match s.chars().next_back() {
+                    Some('>') | Some(')') => (),
+                    _ => return error,
+                }
+
+                Ty::EnumerationAsEnum(parse_str::<Path>(s[1..s.len() - 1].trim())?)
+            },
             _ => return error,
         };
         Ok(ty)
@@ -464,6 +494,7 @@ impl Ty {
             Ty::String => "string",
             Ty::Bytes => "bytes",
             Ty::Enumeration(..) => "enum",
+            Ty::EnumerationAsEnum(..) => "enum",
         }
     }
 
@@ -495,12 +526,14 @@ impl Ty {
             Ty::String => quote!(&str),
             Ty::Bytes => quote!(&[u8]),
             Ty::Enumeration(..) => quote!(i32),
+            Ty::EnumerationAsEnum(ref path) => quote!(#path),
         }
     }
 
     pub fn module(&self) -> Ident {
         match *self {
             Ty::Enumeration(..) => Ident::from("int32"),
+            Ty::EnumerationAsEnum(..) => Ident::from("enumeration"),
             _ => Ident::from(self.as_str()),
         }
     }
@@ -551,6 +584,7 @@ pub enum DefaultValue {
     String(String),
     Bytes(Vec<u8>),
     Enumeration(Tokens),
+    EnumerationAsEnum(Tokens),
     Path(Path),
 }
 
@@ -609,6 +643,11 @@ impl DefaultValue {
                 if let Ty::Enumeration(ref path) = *ty {
                     let variant = Ident::from(value);
                     return Ok(DefaultValue::Enumeration(quote!(#path::#variant)))
+                }
+
+                if let Ty::EnumerationAsEnum(ref path) = *ty {
+                    let variant = Ident::from(value);
+                    return Ok(DefaultValue::EnumerationAsEnum(quote!(#path::#variant)))
                 }
 
                 // Parse special floating point values.
@@ -687,6 +726,7 @@ impl DefaultValue {
             Ty::String => DefaultValue::String(String::new()),
             Ty::Bytes => DefaultValue::Bytes(Vec::new()),
             Ty::Enumeration(ref path) => return DefaultValue::Enumeration(quote!(#path::default())),
+            Ty::EnumerationAsEnum(ref path) => return DefaultValue::EnumerationAsEnum(quote!(#path::default())),
         }
     }
 
@@ -707,6 +747,8 @@ impl DefaultValue {
     pub fn typed(&self) -> Tokens {
         if let DefaultValue::Enumeration(_) = *self {
             quote!(super::#self as i32)
+        } else if let DefaultValue::EnumerationAsEnum(_) = *self {
+            quote!(super::#self)
         } else {
             quote!(#self)
         }
@@ -726,6 +768,9 @@ impl quote::ToTokens for DefaultValue {
             DefaultValue::String(ref value) => value.to_tokens(tokens),
             DefaultValue::Bytes(ref value) => LitByteStr::new(value, Span::call_site()).to_tokens(tokens),
             DefaultValue::Enumeration(ref value) => {
+                value.to_tokens(tokens)
+            },
+            DefaultValue::EnumerationAsEnum(ref value) => {
                 value.to_tokens(tokens)
             },
             DefaultValue::Path(ref value) => value.to_tokens(tokens),

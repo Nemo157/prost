@@ -200,6 +200,7 @@ pub struct Config {
     field_attributes: Vec<(String, String)>,
     prost_types: bool,
     strip_enum_prefix: bool,
+    enum_fields_as_enums: bool,
 }
 
 impl Config {
@@ -364,6 +365,12 @@ impl Config {
         self
     }
 
+    /// TODO(Nemo157)
+    pub fn enum_fields_as_enums(&mut self) -> &mut Self {
+        self.enum_fields_as_enums = true;
+        self
+    }
+
     /// Compile `.proto` files into Rust files during a Cargo build with additional code generator
     /// configuration options.
     ///
@@ -462,6 +469,7 @@ impl default::Default for Config {
             field_attributes: Vec::new(),
             prost_types: true,
             strip_enum_prefix: true,
+            enum_fields_as_enums: false,
         }
     }
 }

@@ -841,6 +841,32 @@ pub mod btree_map {
     map!(BTreeMap);
 }
 
+pub mod enumeration {
+    use std::convert::TryFrom;
+    use ::encoding::*;
+
+    pub fn encode<E, B>(tag: u32, value: &E, buf: &mut B)
+    where E: Copy + Into<u64>,
+          B: BufMut {
+        encode_key(tag, WireType::Varint, buf);
+        encode_varint((*value).into(), buf);
+    }
+
+    pub fn merge<E, B>(wire_type: WireType, value: &mut E, buf: &mut B) -> Result<(), DecodeError>
+    where E: Copy + TryFrom<u64, Error = DecodeError>,
+          B: Buf {
+        check_wire_type(WireType::Varint, wire_type)?;
+        let wire_value = decode_varint(buf)?;
+        *value = E::try_from(wire_value)?;
+        Ok(())
+    }
+
+    #[inline]
+    pub fn encoded_len<E: Copy + Into<u64>>(tag: u32, value: &E) -> usize {
+        key_len(tag) + encoded_len_varint((*value).into())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use std::borrow::Borrow;

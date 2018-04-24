@@ -279,6 +279,8 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
     let expanded = quote! {
         #[allow(non_snake_case, unused_attributes)]
         mod #module {
+            extern crate prost as _prost;
+
             use super::*;
 
             impl #ident {
@@ -309,6 +311,20 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
             impl ::std::convert::From<#ident> for i32 {
                 fn from(value: #ident) -> i32 {
                     value as i32
+                }
+            }
+
+            impl ::std::convert::From<#ident> for u64 {
+                fn from(value: #ident) -> u64 {
+                    value as u64
+                }
+            }
+
+            impl ::std::convert::TryFrom<u64> for #ident {
+                type Error = _prost::DecodeError;
+                fn try_from(value: u64) -> ::std::result::Result<Self, Self::Error> {
+                    #ident::from_i32(value as i32)
+                        .ok_or_else(|| _prost::DecodeError::new(format!("Unknown {} enumeration value {}", stringify!(#ident), value)))
                 }
             }
         };

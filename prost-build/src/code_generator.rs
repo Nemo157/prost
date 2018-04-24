@@ -604,7 +604,7 @@ impl <'a> CodeGenerator<'a> {
             Type::Double => Cow::Borrowed("f64"),
             Type::Uint32 | Type::Fixed32 => Cow::Borrowed("u32"),
             Type::Uint64 | Type::Fixed64 => Cow::Borrowed("u64"),
-            Type::Int32 | Type::Sfixed32 | Type::Sint32 | Type::Enum => Cow::Borrowed("i32"),
+            Type::Int32 | Type::Sfixed32 | Type::Sint32 => Cow::Borrowed("i32"),
             Type::Int64 | Type::Sfixed64 | Type::Sint64 => Cow::Borrowed("i64"),
             Type::Bool => Cow::Borrowed("bool"),
             Type::String => Cow::Borrowed("String"),
@@ -616,6 +616,13 @@ impl <'a> CodeGenerator<'a> {
                     Cow::Owned(self.resolve_ident(field.type_name()))
                 }
             },
+            Type::Enum  => {
+                if self.config.enum_fields_as_enums {
+                    Cow::Owned(self.resolve_ident(field.type_name()))
+                } else {
+                    Cow::Borrowed("i32")
+                }
+            }
         }
     }
 
@@ -661,13 +668,25 @@ impl <'a> CodeGenerator<'a> {
             Type::Bytes => Cow::Borrowed("bytes"),
             Type::Group => Cow::Borrowed("group"),
             Type::Message => Cow::Borrowed("message"),
-            Type::Enum => Cow::Owned(format!("enumeration={:?}", self.resolve_ident(field.type_name()))),
+            Type::Enum => {
+                if self.config.enum_fields_as_enums {
+                    Cow::Owned(format!("enumeration_as_enum={:?}", self.resolve_ident(field.type_name())))
+                } else {
+                    Cow::Owned(format!("enumeration={:?}", self.resolve_ident(field.type_name())))
+                }
+            }
         }
     }
 
     fn map_value_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
         match field.type_() {
-            Type::Enum => Cow::Owned(format!("enumeration({})", self.resolve_ident(field.type_name()))),
+            Type::Enum => {
+                if self.config.enum_fields_as_enums {
+                    Cow::Owned(format!("enumeration_as_enum({})", self.resolve_ident(field.type_name())))
+                } else {
+                    Cow::Owned(format!("enumeration({})", self.resolve_ident(field.type_name())))
+                }
+            }
             _ => self.field_type_tag(field),
         }
     }
