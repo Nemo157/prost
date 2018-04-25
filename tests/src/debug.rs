@@ -16,23 +16,23 @@ fn basic() {
                     bools: [], \
                     string: \"\", \
                     optional_string: None, \
-                    enumeration: ZERO, \
+                    enumeration: BasicEnumeration(0), \
                     enumeration_map: {}, \
                     string_map: {}, \
                     enumeration_btree_map: {}, \
                     string_btree_map: {}, \
                     oneof: None \
                 }");
-    basic.enumeration_map.insert(0, BasicEnumeration::TWO as i32);
-    basic.enumeration = 42;
+    basic.enumeration_map.insert(0, BasicEnumeration::TWO);
+    basic.enumeration = BasicEnumeration::from(42);
     assert_eq!(format!("{:?}", basic),
                "Basic { \
                     int32: 0, \
                     bools: [], \
                     string: \"\", \
                     optional_string: None, \
-                    enumeration: 42, \
-                    enumeration_map: {0: TWO}, \
+                    enumeration: BasicEnumeration(42), \
+                    enumeration_map: {0: BasicEnumeration(2)}, \
                     string_map: {}, \
                     enumeration_btree_map: {}, \
                     string_btree_map: {}, \
@@ -49,9 +49,9 @@ fn tuple_struct() {
     #[derive(Clone, PartialEq, Message)]
     struct NewType(
         #[prost(enumeration="BasicEnumeration", tag="5")]
-        i32,
+        BasicEnumeration,
     );
-    assert_eq!(format!("{:?}", NewType(BasicEnumeration::TWO as i32)), "NewType(TWO)");
+    assert_eq!(format!("{:?}", NewType(BasicEnumeration::TWO)), "NewType(TWO)");
     assert_eq!(format!("{:?}", NewType(42)), "NewType(42)");
 }
 */
@@ -63,7 +63,7 @@ pub enum OneofWithEnum {
     #[prost(string, tag="9")]
     String(String),
     #[prost(enumeration="BasicEnumeration", tag="10")]
-    Enumeration(i32),
+    Enumeration(BasicEnumeration),
 }
 
 #[derive(Clone, PartialEq, Message)]
@@ -76,7 +76,7 @@ struct MessageWithOneof {
 #[test]
 fn oneof_with_enum() {
     let msg = MessageWithOneof {
-        of: Some(OneofWithEnum::Enumeration(BasicEnumeration::TWO as i32))
+        of: Some(OneofWithEnum::Enumeration(BasicEnumeration::TWO))
     };
-    assert_eq!(format!("{:?}", msg), "MessageWithOneof { of: Some(Enumeration(TWO)) }");
+    assert_eq!(format!("{:?}", msg), "MessageWithOneof { of: Some(Enumeration(BasicEnumeration(2))) }");
 }

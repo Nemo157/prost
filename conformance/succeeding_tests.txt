@@ -1,0 +1,2 @@
+Recommended.Proto2.ProtobufInput.OneofZeroEnum.ProtobufOutput
+Recommended.Proto3.ProtobufInput.OneofZeroEnum.ProtobufOutput

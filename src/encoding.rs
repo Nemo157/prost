@@ -694,7 +694,7 @@ pub mod enumeration {
     where E: Into<i32> + Copy,
           B: BufMut
     {
-        encode_key(tag, WireType::LengthDelimited, buf);
+        encode_key(tag, WireType::Varint, buf);
         encode_varint(Into::<i32>::into(*value) as u64, buf);
     }
 
@@ -721,11 +721,39 @@ pub mod enumeration {
     where E: Copy + Into<i32> + From<i32> + Default,
           B: Buf
     {
-        check_wire_type(WireType::LengthDelimited, wire_type)?;
-        let mut value = E::default();
-        merge(WireType::LengthDelimited, &mut value, buf)?;
-        values.push(value);
-        Ok(())
+        if wire_type == WireType::LengthDelimited {
+            // Packed.
+            merge_loop(values, buf, |values, buf| {
+                let mut value = E::default();
+                merge(WireType::Varint, &mut value, buf)?;
+                values.push(value);
+                Ok(())
+            })
+        } else {
+            // Unpacked.
+            check_wire_type(WireType::Varint, wire_type)?;
+            let mut value = E::default();
+            merge(wire_type, &mut value, buf)?;
+            values.push(value);
+            Ok(())
+        }
+    }
+
+    pub fn encode_packed<E, B>(tag: u32, values: &[E], buf: &mut B)
+        where E: Copy + Into<i32>,
+              B: BufMut
+    {
+        if values.is_empty() { return; }
+
+        encode_key(tag, WireType::LengthDelimited, buf);
+        let len: usize = values.iter().map(|value| {
+            encoded_len_varint(Into::<i32>::into(*value) as u64)
+        }).sum();
+        encode_varint(len as u64, buf);
+
+        for value in values {
+            encode_varint(Into::<i32>::into(*value) as u64, buf);
+        }
     }
 
     #[inline]
@@ -743,6 +771,20 @@ pub mod enumeration {
             + values.iter()
                   .map(|value| encoded_len_varint(Into::<i32>::into(*value) as u64))
                   .sum::<usize>()
+    }
+
+    #[inline]
+    pub fn encoded_len_packed<E>(tag: u32, values: &[E]) -> usize
+        where E: Copy + Into<i32>
+    {
+        if values.is_empty() {
+            0
+        } else {
+            let len = values.iter()
+                  .map(|value| encoded_len_varint(Into::<i32>::into(*value) as u64))
+                  .sum::<usize>();
+            key_len(tag) + encoded_len_varint(len as u64) + len
+        }
     }
 }
 

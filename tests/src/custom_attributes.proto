@@ -6,11 +6,15 @@ message Msg {
 }
 
 enum AnEnum {
+	// docs
 	A = 0;
+	// docs
 	B = 1;
 }
 
 enum AnotherEnum {
+	// docs
 	C = 0;
+	// docs
 	D = 2;
 }

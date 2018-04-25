@@ -109,11 +109,11 @@ pub struct FieldDescriptorProto {
     #[prost(int32, optional, tag="3")]
     pub number: ::std::option::Option<i32>,
     #[prost(enumeration="field_descriptor_proto::Label", optional, tag="4")]
-    pub label: ::std::option::Option<i32>,
+    pub label: ::std::option::Option<field_descriptor_proto::Label>,
     /// If type_name is set, this need not be set.  If both this and type_name
     /// are set, this must be one of TYPE_ENUM, TYPE_MESSAGE or TYPE_GROUP.
     #[prost(enumeration="field_descriptor_proto::Type", optional, tag="5")]
-    pub type_: ::std::option::Option<i32>,
+    pub type_: ::std::option::Option<field_descriptor_proto::Type>,
     /// For message and enum types, this is the name of the type.  If the name
     /// starts with a '.', it is fully-qualified.  Otherwise, C++-like scoping
     /// rules are used to find the type (i.e. first the nested types within this
@@ -146,47 +146,81 @@ pub struct FieldDescriptorProto {
     pub options: ::std::option::Option<FieldOptions>,
 }
 pub mod field_descriptor_proto {
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
-    pub enum Type {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    pub struct Type(i32);
+    #[allow(dead_code)]
+    impl Type {
         /// 0 is reserved for errors.
         /// Order is weird for historical reasons.
-        Double = 1,
-        Float = 2,
+        pub const DOUBLE: Type = Type(1);
+        pub const FLOAT: Type = Type(2);
         /// Not ZigZag encoded.  Negative numbers take 10 bytes.  Use TYPE_SINT64 if
         /// negative values are likely.
-        Int64 = 3,
-        Uint64 = 4,
+        pub const INT64: Type = Type(3);
+        pub const UINT64: Type = Type(4);
         /// Not ZigZag encoded.  Negative numbers take 10 bytes.  Use TYPE_SINT32 if
         /// negative values are likely.
-        Int32 = 5,
-        Fixed64 = 6,
-        Fixed32 = 7,
-        Bool = 8,
-        String = 9,
+        pub const INT32: Type = Type(5);
+        pub const FIXED64: Type = Type(6);
+        pub const FIXED32: Type = Type(7);
+        pub const BOOL: Type = Type(8);
+        pub const STRING: Type = Type(9);
         /// Tag-delimited aggregate.
         /// Group type is deprecated and not supported in proto3. However, Proto3
         /// implementations should still be able to parse the group wire format and
         /// treat group fields as unknown fields.
-        Group = 10,
+        pub const GROUP: Type = Type(10);
         /// Length-delimited aggregate.
-        Message = 11,
+        pub const MESSAGE: Type = Type(11);
         /// New in version 2.
-        Bytes = 12,
-        Uint32 = 13,
-        Enum = 14,
-        Sfixed32 = 15,
-        Sfixed64 = 16,
+        pub const BYTES: Type = Type(12);
+        pub const UINT32: Type = Type(13);
+        pub const ENUM: Type = Type(14);
+        pub const SFIXED32: Type = Type(15);
+        pub const SFIXED64: Type = Type(16);
         /// Uses ZigZag encoding.
-        Sint32 = 17,
+        pub const SINT32: Type = Type(17);
         /// Uses ZigZag encoding.
-        Sint64 = 18,
+        pub const SINT64: Type = Type(18);
     }
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
-    pub enum Label {
+    impl ::std::convert::Into<i32> for Type {
+        fn into(self) -> i32 {
+            self.0
+        }
+    }
+    impl ::std::convert::From<i32> for Type {
+        fn from(value: i32) -> Type {
+            Type(value)
+        }
+    }
+impl ::std::default::Default for Type {
+        fn default() -> Type {
+            Type(0)
+        }
+    }
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    pub struct Label(i32);
+    #[allow(dead_code)]
+    impl Label {
         /// 0 is reserved for errors
-        Optional = 1,
-        Required = 2,
-        Repeated = 3,
+        pub const OPTIONAL: Label = Label(1);
+        pub const REQUIRED: Label = Label(2);
+        pub const REPEATED: Label = Label(3);
+    }
+    impl ::std::convert::Into<i32> for Label {
+        fn into(self) -> i32 {
+            self.0
+        }
+    }
+    impl ::std::convert::From<i32> for Label {
+        fn from(value: i32) -> Label {
+            Label(value)
+        }
+    }
+impl ::std::default::Default for Label {
+        fn default() -> Label {
+            Label(0)
+        }
     }
 }
 /// Describes a oneof.
@@ -339,8 +373,8 @@ pub struct FileOptions {
     /// This option has no effect on when used with the lite runtime.
     #[prost(bool, optional, tag="27", default="false")]
     pub java_string_check_utf8: ::std::option::Option<bool>,
-    #[prost(enumeration="file_options::OptimizeMode", optional, tag="9", default="Speed")]
-    pub optimize_for: ::std::option::Option<i32>,
+    #[prost(enumeration="file_options::OptimizeMode", optional, tag="9", default="SPEED")]
+    pub optimize_for: ::std::option::Option<file_options::OptimizeMode>,
     /// Sets the Go package where structs generated from this .proto will be
     /// placed. If omitted, the Go package will be derived from the following:
     ///   - The basename of the package import path, if provided.
@@ -405,16 +439,33 @@ pub struct FileOptions {
 }
 pub mod file_options {
     /// Generated classes can be optimized for speed or code size.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
-    pub enum OptimizeMode {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    pub struct OptimizeMode(i32);
+    #[allow(dead_code)]
+    impl OptimizeMode {
         /// Generate complete code for parsing, serialization,
-        Speed = 1,
+        pub const SPEED: OptimizeMode = OptimizeMode(1);
         /// etc.
         ///
         /// Use ReflectionOps to implement these methods.
-        CodeSize = 2,
+        pub const CODE_SIZE: OptimizeMode = OptimizeMode(2);
         /// Generate code using MessageLite and the lite runtime.
-        LiteRuntime = 3,
+        pub const LITE_RUNTIME: OptimizeMode = OptimizeMode(3);
+    }
+    impl ::std::convert::Into<i32> for OptimizeMode {
+        fn into(self) -> i32 {
+            self.0
+        }
+    }
+    impl ::std::convert::From<i32> for OptimizeMode {
+        fn from(value: i32) -> OptimizeMode {
+            OptimizeMode(value)
+        }
+    }
+impl ::std::default::Default for OptimizeMode {
+        fn default() -> OptimizeMode {
+            OptimizeMode(0)
+        }
     }
 }
 #[derive(Clone, PartialEq, Message)]
@@ -483,8 +534,8 @@ pub struct FieldOptions {
     /// representation of the field than it normally would.  See the specific
     /// options below.  This option is not yet implemented in the open source
     /// release -- sorry, we'll try to include it in a future version!
-    #[prost(enumeration="field_options::CType", optional, tag="1", default="String")]
-    pub ctype: ::std::option::Option<i32>,
+    #[prost(enumeration="field_options::CType", optional, tag="1", default="STRING")]
+    pub ctype: ::std::option::Option<field_options::CType>,
     /// The packed option can be enabled for repeated primitive fields to enable
     /// a more efficient representation on the wire. Rather than repeatedly
     /// writing the tag and type for each element, the entire array is encoded as
@@ -503,8 +554,8 @@ pub struct FieldOptions {
     ///
     /// This option is an enum to permit additional types to be added, e.g.
     /// goog.math.Integer.
-    #[prost(enumeration="field_options::JsType", optional, tag="6", default="JsNormal")]
-    pub jstype: ::std::option::Option<i32>,
+    #[prost(enumeration="field_options::JsType", optional, tag="6", default="JS_NORMAL")]
+    pub jstype: ::std::option::Option<field_options::JsType>,
     /// Should this field be parsed lazily?  Lazy applies only to message-type
     /// fields.  It means that when the outer message is initially parsed, the
     /// inner message's contents will not be parsed but instead stored in encoded
@@ -549,21 +600,55 @@ pub struct FieldOptions {
     pub uninterpreted_option: ::std::vec::Vec<UninterpretedOption>,
 }
 pub mod field_options {
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
-    pub enum CType {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    pub struct CType(i32);
+    #[allow(dead_code)]
+    impl CType {
         /// Default mode.
-        String = 0,
-        Cord = 1,
-        StringPiece = 2,
+        pub const STRING: CType = CType(0);
+        pub const CORD: CType = CType(1);
+        pub const STRING_PIECE: CType = CType(2);
     }
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
-    pub enum JsType {
+    impl ::std::convert::Into<i32> for CType {
+        fn into(self) -> i32 {
+            self.0
+        }
+    }
+    impl ::std::convert::From<i32> for CType {
+        fn from(value: i32) -> CType {
+            CType(value)
+        }
+    }
+impl ::std::default::Default for CType {
+        fn default() -> CType {
+            CType(0)
+        }
+    }
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    pub struct JsType(i32);
+    #[allow(dead_code)]
+    impl JsType {
         /// Use the default type.
-        JsNormal = 0,
+        pub const JS_NORMAL: JsType = JsType(0);
         /// Use JavaScript strings.
-        JsString = 1,
+        pub const JS_STRING: JsType = JsType(1);
         /// Use JavaScript numbers.
-        JsNumber = 2,
+        pub const JS_NUMBER: JsType = JsType(2);
+    }
+    impl ::std::convert::Into<i32> for JsType {
+        fn into(self) -> i32 {
+            self.0
+        }
+    }
+    impl ::std::convert::From<i32> for JsType {
+        fn from(value: i32) -> JsType {
+            JsType(value)
+        }
+    }
+impl ::std::default::Default for JsType {
+        fn default() -> JsType {
+            JsType(0)
+        }
     }
 }
 #[derive(Clone, PartialEq, Message)]
@@ -630,8 +715,8 @@ pub struct MethodOptions {
     /// this is a formalization for deprecating methods.
     #[prost(bool, optional, tag="33", default="false")]
     pub deprecated: ::std::option::Option<bool>,
-    #[prost(enumeration="method_options::IdempotencyLevel", optional, tag="34", default="IdempotencyUnknown")]
-    pub idempotency_level: ::std::option::Option<i32>,
+    #[prost(enumeration="method_options::IdempotencyLevel", optional, tag="34", default="IDEMPOTENCY_UNKNOWN")]
+    pub idempotency_level: ::std::option::Option<method_options::IdempotencyLevel>,
     /// The parser stores options it doesn't recognize here. See above.
     #[prost(message, repeated, tag="999")]
     pub uninterpreted_option: ::std::vec::Vec<UninterpretedOption>,
@@ -640,13 +725,30 @@ pub mod method_options {
     /// Is this method side-effect-free (or safe in HTTP parlance), or idempotent,
     /// or neither? HTTP based RPC implementation may choose GET verb for safe
     /// methods, and PUT verb for idempotent methods instead of the default POST.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
-    pub enum IdempotencyLevel {
-        IdempotencyUnknown = 0,
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    pub struct IdempotencyLevel(i32);
+    #[allow(dead_code)]
+    impl IdempotencyLevel {
+        pub const IDEMPOTENCY_UNKNOWN: IdempotencyLevel = IdempotencyLevel(0);
         /// implies idempotent
-        NoSideEffects = 1,
+        pub const NO_SIDE_EFFECTS: IdempotencyLevel = IdempotencyLevel(1);
         /// idempotent, but may have side effects
-        Idempotent = 2,
+        pub const IDEMPOTENT: IdempotencyLevel = IdempotencyLevel(2);
+    }
+    impl ::std::convert::Into<i32> for IdempotencyLevel {
+        fn into(self) -> i32 {
+            self.0
+        }
+    }
+    impl ::std::convert::From<i32> for IdempotencyLevel {
+        fn from(value: i32) -> IdempotencyLevel {
+            IdempotencyLevel(value)
+        }
+    }
+impl ::std::default::Default for IdempotencyLevel {
+        fn default() -> IdempotencyLevel {
+            IdempotencyLevel(0)
+        }
     }
 }
 /// A message representing a option the parser does not recognize. This only
@@ -1001,17 +1103,17 @@ pub struct Type {
     pub source_context: ::std::option::Option<SourceContext>,
     /// The source syntax.
     #[prost(enumeration="Syntax", tag="6")]
-    pub syntax: i32,
+    pub syntax: Syntax,
 }
 /// A single field of a message type.
 #[derive(Clone, PartialEq, Message)]
 pub struct Field {
     /// The field type.
     #[prost(enumeration="field::Kind", tag="1")]
-    pub kind: i32,
+    pub kind: field::Kind,
     /// The field cardinality.
     #[prost(enumeration="field::Cardinality", tag="2")]
-    pub cardinality: i32,
+    pub cardinality: field::Cardinality,
     /// The field number.
     #[prost(int32, tag="3")]
     pub number: i32,
@@ -1041,58 +1143,92 @@ pub struct Field {
 }
 pub mod field {
     /// Basic field types.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
-    pub enum Kind {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    pub struct Kind(i32);
+    #[allow(dead_code)]
+    impl Kind {
         /// Field type unknown.
-        TypeUnknown = 0,
+        pub const TYPE_UNKNOWN: Kind = Kind(0);
         /// Field type double.
-        TypeDouble = 1,
+        pub const TYPE_DOUBLE: Kind = Kind(1);
         /// Field type float.
-        TypeFloat = 2,
+        pub const TYPE_FLOAT: Kind = Kind(2);
         /// Field type int64.
-        TypeInt64 = 3,
+        pub const TYPE_INT64: Kind = Kind(3);
         /// Field type uint64.
-        TypeUint64 = 4,
+        pub const TYPE_UINT64: Kind = Kind(4);
         /// Field type int32.
-        TypeInt32 = 5,
+        pub const TYPE_INT32: Kind = Kind(5);
         /// Field type fixed64.
-        TypeFixed64 = 6,
+        pub const TYPE_FIXED64: Kind = Kind(6);
         /// Field type fixed32.
-        TypeFixed32 = 7,
+        pub const TYPE_FIXED32: Kind = Kind(7);
         /// Field type bool.
-        TypeBool = 8,
+        pub const TYPE_BOOL: Kind = Kind(8);
         /// Field type string.
-        TypeString = 9,
+        pub const TYPE_STRING: Kind = Kind(9);
         /// Field type group. Proto2 syntax only, and deprecated.
-        TypeGroup = 10,
+        pub const TYPE_GROUP: Kind = Kind(10);
         /// Field type message.
-        TypeMessage = 11,
+        pub const TYPE_MESSAGE: Kind = Kind(11);
         /// Field type bytes.
-        TypeBytes = 12,
+        pub const TYPE_BYTES: Kind = Kind(12);
         /// Field type uint32.
-        TypeUint32 = 13,
+        pub const TYPE_UINT32: Kind = Kind(13);
         /// Field type enum.
-        TypeEnum = 14,
+        pub const TYPE_ENUM: Kind = Kind(14);
         /// Field type sfixed32.
-        TypeSfixed32 = 15,
+        pub const TYPE_SFIXED32: Kind = Kind(15);
         /// Field type sfixed64.
-        TypeSfixed64 = 16,
+        pub const TYPE_SFIXED64: Kind = Kind(16);
         /// Field type sint32.
-        TypeSint32 = 17,
+        pub const TYPE_SINT32: Kind = Kind(17);
         /// Field type sint64.
-        TypeSint64 = 18,
+        pub const TYPE_SINT64: Kind = Kind(18);
+    }
+    impl ::std::convert::Into<i32> for Kind {
+        fn into(self) -> i32 {
+            self.0
+        }
+    }
+    impl ::std::convert::From<i32> for Kind {
+        fn from(value: i32) -> Kind {
+            Kind(value)
+        }
+    }
+impl ::std::default::Default for Kind {
+        fn default() -> Kind {
+            Kind(0)
+        }
     }
     /// Whether a field is optional, required, or repeated.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
-    pub enum Cardinality {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    pub struct Cardinality(i32);
+    #[allow(dead_code)]
+    impl Cardinality {
         /// For fields with unknown cardinality.
-        Unknown = 0,
+        pub const UNKNOWN: Cardinality = Cardinality(0);
         /// For optional fields.
-        Optional = 1,
+        pub const OPTIONAL: Cardinality = Cardinality(1);
         /// For required fields. Proto2 syntax only.
-        Required = 2,
+        pub const REQUIRED: Cardinality = Cardinality(2);
         /// For repeated fields.
-        Repeated = 3,
+        pub const REPEATED: Cardinality = Cardinality(3);
+    }
+    impl ::std::convert::Into<i32> for Cardinality {
+        fn into(self) -> i32 {
+            self.0
+        }
+    }
+    impl ::std::convert::From<i32> for Cardinality {
+        fn from(value: i32) -> Cardinality {
+            Cardinality(value)
+        }
+    }
+impl ::std::default::Default for Cardinality {
+        fn default() -> Cardinality {
+            Cardinality(0)
+        }
     }
 }
 /// Enum type definition.
@@ -1112,7 +1248,7 @@ pub struct Enum {
     pub source_context: ::std::option::Option<SourceContext>,
     /// The source syntax.
     #[prost(enumeration="Syntax", tag="5")]
-    pub syntax: i32,
+    pub syntax: Syntax,
 }
 /// Enum value definition.
 #[derive(Clone, PartialEq, Message)]
@@ -1145,12 +1281,29 @@ pub struct Option {
     pub value: ::std::option::Option<Any>,
 }
 /// The syntax in which a protocol buffer element is defined.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
-pub enum Syntax {
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Syntax(i32);
+#[allow(dead_code)]
+impl Syntax {
     /// Syntax `proto2`.
-    Proto2 = 0,
+    pub const PROTO2: Syntax = Syntax(0);
     /// Syntax `proto3`.
-    Proto3 = 1,
+    pub const PROTO3: Syntax = Syntax(1);
+}
+impl ::std::convert::Into<i32> for Syntax {
+    fn into(self) -> i32 {
+        self.0
+    }
+}
+impl ::std::convert::From<i32> for Syntax {
+    fn from(value: i32) -> Syntax {
+        Syntax(value)
+    }
+}
+impl ::std::default::Default for Syntax {
+    fn default() -> Syntax {
+        Syntax(0)
+    }
 }
 /// Api is a light-weight descriptor for an API Interface.
 ///
@@ -1205,7 +1358,7 @@ pub struct Api {
     pub mixins: ::std::vec::Vec<Mixin>,
     /// The source syntax of the service.
     #[prost(enumeration="Syntax", tag="7")]
-    pub syntax: i32,
+    pub syntax: Syntax,
 }
 /// Method represents a method of an API interface.
 #[derive(Clone, PartialEq, Message)]
@@ -1230,7 +1383,7 @@ pub struct Method {
     pub options: ::std::vec::Vec<Option>,
     /// The source syntax of this method.
     #[prost(enumeration="Syntax", tag="7")]
-    pub syntax: i32,
+    pub syntax: Syntax,
 }
 /// Declares an API Interface to be included in this interface. The including
 /// interface must redeclare all the methods from the included interface, but
@@ -1641,7 +1794,7 @@ pub mod value {
     pub enum Kind {
         /// Represents a null value.
         #[prost(enumeration="super::NullValue", tag="1")]
-        NullValue(i32),
+        NullValue(super::NullValue),
         /// Represents a double value.
         #[prost(double, tag="2")]
         NumberValue(f64),
@@ -1672,10 +1825,27 @@ pub struct ListValue {
 /// `Value` type union.
 ///
 ///  The JSON representation for `NullValue` is JSON `null`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
-pub enum NullValue {
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct NullValue(i32);
+#[allow(dead_code)]
+impl NullValue {
     /// Null value.
-    NullValue = 0,
+    pub const NULL_VALUE: NullValue = NullValue(0);
+}
+impl ::std::convert::Into<i32> for NullValue {
+    fn into(self) -> i32 {
+        self.0
+    }
+}
+impl ::std::convert::From<i32> for NullValue {
+    fn from(value: i32) -> NullValue {
+        NullValue(value)
+    }
+}
+impl ::std::default::Default for NullValue {
+    fn default() -> NullValue {
+        NullValue(0)
+    }
 }
 /// A Timestamp represents a point in time independent of any time zone
 /// or calendar, represented as seconds and fractions of seconds at

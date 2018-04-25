@@ -207,7 +207,7 @@ pub struct TagsInferred {
     #[prost(tag="9", string, required)]
     pub skip_to_nine: String,
     #[prost(enumeration="BasicEnumeration", default="ONE")]
-    pub ten: i32,
+    pub ten: BasicEnumeration,
     #[prost(map="string, string")]
     pub eleven: ::std::collections::HashMap<String, String>,
 
@@ -234,7 +234,7 @@ pub struct TagsQualified {
     #[prost(tag="9", string, required)]
     pub nine: String,
     #[prost(tag="10", enumeration="BasicEnumeration", default="ONE")]
-    pub ten: i32,
+    pub ten: BasicEnumeration,
     #[prost(tag="11", map="string, string")]
     pub eleven: ::std::collections::HashMap<String, String>,
 }
@@ -252,13 +252,13 @@ pub struct DefaultValues {
     pub string: String,
 
     #[prost(enumeration="BasicEnumeration", tag="4", default="ONE")]
-    pub enumeration: i32,
+    pub enumeration: BasicEnumeration,
 
     #[prost(enumeration="BasicEnumeration", optional, tag="5", default="TWO")]
-    pub optional_enumeration: Option<i32>,
+    pub optional_enumeration: Option<BasicEnumeration>,
 
     #[prost(enumeration="BasicEnumeration", repeated, tag="6")]
-    pub repeated_enumeration: Vec<i32>,
+    pub repeated_enumeration: Vec<BasicEnumeration>,
 }
 
 #[test]
@@ -267,19 +267,36 @@ fn check_default_values() {
     assert_eq!(default.int32, 42);
     assert_eq!(default.optional_int32, None);
     assert_eq!(&default.string, "fourty two");
-    assert_eq!(default.enumeration, BasicEnumeration::ONE as i32);
+    assert_eq!(default.enumeration, BasicEnumeration::ONE);
     assert_eq!(default.optional_enumeration, None);
     assert_eq!(&default.repeated_enumeration, &[]);
     assert_eq!(0, default.encoded_len());
 }
 
 /// A protobuf enum.
-#[derive(Clone, Copy, Debug, PartialEq, Enumeration)]
-pub enum BasicEnumeration {
-    ZERO = 0,
-    ONE = 1,
-    TWO = 2,
-    THREE = 3,
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct BasicEnumeration(i32);
+#[allow(dead_code)]
+impl BasicEnumeration {
+    pub const ZERO: BasicEnumeration = BasicEnumeration(0);
+    pub const ONE: BasicEnumeration = BasicEnumeration(1);
+    pub const TWO: BasicEnumeration = BasicEnumeration(2);
+    pub const THREE: BasicEnumeration = BasicEnumeration(3);
+}
+impl Into<i32> for BasicEnumeration {
+    fn into(self) -> i32 {
+        self.0
+    }
+}
+impl From<i32> for BasicEnumeration {
+    fn from(value: i32) -> BasicEnumeration {
+        BasicEnumeration(value)
+    }
+}
+impl Default for BasicEnumeration {
+    fn default() -> BasicEnumeration {
+        BasicEnumeration(0)
+    }
 }
 
 #[derive(Clone, PartialEq, Message)]
@@ -297,16 +314,16 @@ pub struct Basic {
     pub optional_string: Option<String>,
 
     #[prost(enumeration="BasicEnumeration", tag="5")]
-    pub enumeration: i32,
+    pub enumeration: BasicEnumeration,
 
     #[prost(map="int32, enumeration(BasicEnumeration)", tag="6")]
-    pub enumeration_map: ::std::collections::HashMap<i32, i32>,
+    pub enumeration_map: ::std::collections::HashMap<i32, BasicEnumeration>,
 
     #[prost(hash_map="string, string", tag="7")]
     pub string_map: ::std::collections::HashMap<String, String>,
 
     #[prost(btree_map="int32, enumeration(BasicEnumeration)", tag="10")]
-    pub enumeration_btree_map: ::std::collections::BTreeMap<i32, i32>,
+    pub enumeration_btree_map: ::std::collections::BTreeMap<i32, BasicEnumeration>,
 
     #[prost(btree_map="string, string", tag="11")]
     pub string_btree_map: ::std::collections::BTreeMap<String, String>,

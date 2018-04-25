@@ -129,11 +129,11 @@ impl Field {
         let module = self.map_ty.module();
         match self.value_ty {
             ValueTy::Scalar(scalar::Ty::Enumeration(ref ty)) => {
-                let default = quote!(#ty::default() as i32);
+                let default = quote!(#ty::default());
                 quote! {
                     _prost::encoding::#module::encode_with_default(#ke, #kl,
-                                                                   _prost::encoding::int32::encode,
-                                                                   _prost::encoding::int32::encoded_len,
+                                                                   _prost::encoding::enumeration::encode,
+                                                                   _prost::encoding::enumeration::encoded_len,
                                                                    &(#default),
                                                                    #tag, &#ident, buf);
                 }
@@ -166,9 +166,9 @@ impl Field {
         let module = self.map_ty.module();
         match self.value_ty {
             ValueTy::Scalar(scalar::Ty::Enumeration(ref ty)) => {
-                let default = quote!(#ty::default() as i32);
+                let default = quote!(#ty::default());
                 quote! {
-                    _prost::encoding::#module::merge_with_default(#km, _prost::encoding::int32::merge,
+                    _prost::encoding::#module::merge_with_default(#km, _prost::encoding::enumeration::merge,
                                                                   #default, &mut #ident, buf)
                 }
             },
@@ -192,10 +192,10 @@ impl Field {
         let module = self.map_ty.module();
         match self.value_ty {
             ValueTy::Scalar(scalar::Ty::Enumeration(ref ty)) => {
-                let default = quote!(#ty::default() as i32);
+                let default = quote!(#ty::default());
                 quote! {
                     _prost::encoding::#module::encoded_len_with_default(
-                        #kl, _prost::encoding::int32::encoded_len,
+                        #kl, _prost::encoding::enumeration::encoded_len,
                         &(#default), #tag, &#ident)
                 }
             },
@@ -216,26 +216,8 @@ impl Field {
     }
 
     /// Returns methods to embed in the message.
-    pub fn methods(&self, ident: &Ident) -> Option<Tokens> {
-        if let ValueTy::Scalar(scalar::Ty::Enumeration(ref ty)) = self.value_ty {
-            let key_ty = self.key_ty.rust_type();
-            let key_ref_ty = self.key_ty.rust_ref_type();
-
-            let get = Ident::from(format!("get_{}", ident));
-            let insert = Ident::from(format!("insert_{}", ident));
-            let take_ref = if self.key_ty.is_numeric() { quote!(&) } else { quote!() };
-
-            Some(quote! {
-                pub fn #get(&self, key: #key_ref_ty) -> ::std::option::Option<#ty> {
-                    self.#ident.get(#take_ref key).cloned().and_then(#ty::from_i32)
-                }
-                pub fn #insert(&mut self, key: #key_ty, value: #ty) -> ::std::option::Option<#ty> {
-                    self.#ident.insert(key, value as i32).and_then(#ty::from_i32)
-                }
-            })
-        } else {
-            None
-        }
+    pub fn methods(&self, _ident: &Ident) -> Option<Tokens> {
+        None
     }
 
     /// Returns a newtype wrapper around the map, implementing nicer Debug

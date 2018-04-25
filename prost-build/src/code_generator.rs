@@ -1,6 +1,6 @@
 use std::ascii;
 use std::borrow::Cow;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use itertools::{Either, Itertools};
 use multimap::MultiMap;
@@ -16,6 +16,7 @@ use prost_types::{
 };
 use prost_types::field_descriptor_proto::{Label, Type};
 use prost_types::source_code_info::Location;
+use heck::ShoutySnakeCase;
 
 use ast::{
     Comments,
@@ -256,14 +257,14 @@ impl <'a> CodeGenerator<'a> {
     fn append_field(&mut self, msg_name: &str, field: FieldDescriptorProto) {
         // TODO(danburkert/prost#19): support groups.
         let type_ = field.type_();
-        if type_ == Type::Group { return; }
+        if type_ == Type::GROUP { return; }
 
-        let repeated = field.label == Some(Label::Repeated as i32);
+        let repeated = field.label == Some(Label::REPEATED.into());
         let optional = self.optional(&field);
         let ty = self.resolve_type(&field);
 
         let boxed = !repeated
-                 && type_ == Type::Message
+                 && type_ == Type::MESSAGE
                  && self.message_graph.is_nested(field.type_name(), msg_name);
 
         debug!("    field: {:?}, type: {:?}, boxed: {}", field.name(), ty, boxed);
@@ -275,17 +276,18 @@ impl <'a> CodeGenerator<'a> {
         self.buf.push_str(&type_tag);
 
         match field.label() {
-            Label::Optional => if optional {
+            Label::OPTIONAL => if optional {
                 self.buf.push_str(", optional");
             },
-            Label::Required => self.buf.push_str(", required"),
-            Label::Repeated => {
+            Label::REQUIRED => self.buf.push_str(", required"),
+            Label::REPEATED => {
                 self.buf.push_str(", repeated");
                 if can_pack(&field) && !field.options.as_ref().map_or(self.syntax == Syntax::Proto3,
                                                                       |options| options.packed()) {
                     self.buf.push_str(", packed=\"false\"");
                 }
             },
+            _ => unimplemented!(),
         }
 
         if boxed { self.buf.push_str(", boxed"); }
@@ -294,14 +296,14 @@ impl <'a> CodeGenerator<'a> {
 
         if let Some(ref default) = field.default_value {
             self.buf.push_str("\", default=\"");
-            if type_ == Type::Bytes {
+            if type_ == Type::BYTES {
                 self.buf.push_str("b\\\"");
                 for b in unescape_c_escape_string(default) {
                     self.buf.extend(ascii::escape_default(b).flat_map(|c| (c as char).escape_default()));
                 }
                 self.buf.push_str("\\\"");
-            } else if type_ == Type::Enum {
-                self.buf.push_str(&to_upper_camel(default));
+            } else if type_ == Type::ENUM {
+                self.buf.push_str(&default.to_shouty_snake_case());
             } else {
                 // TODO: this is only correct if the Protobuf escaping matches Rust escaping. To be
                 // safer, we should unescape the Protobuf string and re-escape it with the Rust
@@ -405,7 +407,7 @@ impl <'a> CodeGenerator<'a> {
         for (field, idx) in fields {
             // TODO(danburkert/prost#19): support groups.
             let type_ = field.type_();
-            if type_ == Type::Group { continue; }
+            if type_ == Type::GROUP { continue; }
 
             self.path.push(idx as i32);
             self.append_doc();
@@ -419,7 +421,7 @@ impl <'a> CodeGenerator<'a> {
             self.push_indent();
             let ty = self.resolve_type(&field);
 
-            let boxed = type_ == Type::Message
+            let boxed = type_ == Type::MESSAGE
                      && self.message_graph.is_nested(field.type_name(), msg_name);
 
             debug!("    oneof: {:?}, type: {:?}, boxed: {}", field.name(), ty, boxed);
@@ -459,33 +461,34 @@ impl <'a> CodeGenerator<'a> {
         let fq_enum_name = format!(".{}.{}", self.package, enum_name);
         if self.well_known_type(&fq_enum_name).is_some() { return; }
 
+        let upper_name = to_upper_camel(desc.name());
+
         self.append_doc();
         self.push_indent();
-        self.buf.push_str("#[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]\n");
+        self.buf.push_str("#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]\n");
         self.append_type_attributes(&fq_enum_name);
         self.push_indent();
-        self.buf.push_str("pub enum ");
-        self.buf.push_str(&to_upper_camel(desc.name()));
-        self.buf.push_str(" {\n");
+        self.buf.push_str("pub struct ");
+        self.buf.push_str(&upper_name);
+        self.buf.push_str("(i32);\n");
 
-        let mut numbers = HashSet::new();
+        self.push_indent();
+        self.buf.push_str("#[allow(dead_code)]\n");
+        self.push_indent();
+        self.buf.push_str("impl ");
+        self.buf.push_str(&upper_name);
+        self.buf.push_str(" {\n");
 
         self.depth += 1;
         self.path.push(2);
         for (idx, value) in enum_values.into_iter().enumerate() {
-            // Skip duplicate enum values. Protobuf allows this when the
-            // 'allow_alias' option is set.
-            if !numbers.insert(value.number()) {
-                continue;
-            }
-
             self.path.push(idx as i32);
             let stripped_prefix = if self.config.strip_enum_prefix {
-                Some(to_upper_camel(&enum_name))
+                Some(enum_name.to_shouty_snake_case() + "_")
             } else {
                 None
             };
-            self.append_enum_value(&fq_enum_name, value, stripped_prefix);
+            self.append_enum_value(&fq_enum_name, value, stripped_prefix, &upper_name);
             self.path.pop();
         }
         self.path.pop();
@@ -493,13 +496,69 @@ impl <'a> CodeGenerator<'a> {
 
         self.push_indent();
         self.buf.push_str("}\n");
+
+        self.push_indent();
+        self.buf.push_str("impl ::std::convert::Into<i32> for ");
+        self.buf.push_str(&upper_name);
+        self.buf.push_str(" {\n");
+        self.depth += 1;
+        self.push_indent();
+        self.buf.push_str("fn into(self) -> i32 {\n");
+        self.depth += 1;
+        self.push_indent();
+        self.buf.push_str("self.0\n");
+        self.depth -= 1;
+        self.push_indent();
+        self.buf.push_str("}\n");
+        self.depth -= 1;
+        self.push_indent();
+        self.buf.push_str("}\n");
+
+        self.push_indent();
+        self.buf.push_str("impl ::std::convert::From<i32> for ");
+        self.buf.push_str(&upper_name);
+        self.buf.push_str(" {\n");
+        self.depth += 1;
+        self.push_indent();
+        self.buf.push_str("fn from(value: i32) -> ");
+        self.buf.push_str(&upper_name);
+        self.buf.push_str(" {\n");
+        self.depth += 1;
+        self.push_indent();
+        self.buf.push_str(&upper_name);
+        self.buf.push_str("(value)\n");
+        self.depth -= 1;
+        self.push_indent();
+        self.buf.push_str("}\n");
+        self.depth -= 1;
+        self.push_indent();
+        self.buf.push_str("}\n");
+
+        self.buf.push_str("impl ::std::default::Default for ");
+        self.buf.push_str(&upper_name);
+        self.buf.push_str(" {\n");
+        self.depth += 1;
+        self.push_indent();
+        self.buf.push_str("fn default() -> ");
+        self.buf.push_str(&upper_name);
+        self.buf.push_str(" {\n");
+        self.depth += 1;
+        self.push_indent();
+        self.buf.push_str(&upper_name);
+        self.buf.push_str("(0)\n");
+        self.depth -= 1;
+        self.push_indent();
+        self.buf.push_str("}\n");
+        self.depth -= 1;
+        self.push_indent();
+        self.buf.push_str("}\n");
     }
 
-    fn append_enum_value(&mut self, fq_enum_name: &str, value: &EnumValueDescriptorProto, prefix_to_strip: Option<String>) {
+    fn append_enum_value(&mut self, fq_enum_name: &str, value: &EnumValueDescriptorProto, prefix_to_strip: Option<String>, enum_name: &str) {
         self.append_doc();
         self.append_field_attributes(fq_enum_name, &value.name());
         self.push_indent();
-        let name = to_upper_camel(value.name());
+        let name = value.name().to_shouty_snake_case();
         let name_unprefixed = match prefix_to_strip {
             Some(prefix) => {
                 let is_prefixed = name.starts_with(&prefix) && name != prefix;
@@ -511,10 +570,15 @@ impl <'a> CodeGenerator<'a> {
             },
             None => name
         };
+        self.buf.push_str("pub const ");
         self.buf.push_str(&name_unprefixed);
+        self.buf.push_str(": ");
+        self.buf.push_str(&enum_name);
         self.buf.push_str(" = ");
+        self.buf.push_str(&enum_name);
+        self.buf.push_str("(");
         self.buf.push_str(&value.number().to_string());
-        self.buf.push_str(",\n");
+        self.buf.push_str(");\n");
     }
 
     fn push_service(&mut self, service: ServiceDescriptorProto) {
@@ -600,22 +664,23 @@ impl <'a> CodeGenerator<'a> {
 
     fn resolve_type<'b>(&self, field: &'b FieldDescriptorProto) -> Cow<'b, str> {
         match field.type_() {
-            Type::Float => Cow::Borrowed("f32"),
-            Type::Double => Cow::Borrowed("f64"),
-            Type::Uint32 | Type::Fixed32 => Cow::Borrowed("u32"),
-            Type::Uint64 | Type::Fixed64 => Cow::Borrowed("u64"),
-            Type::Int32 | Type::Sfixed32 | Type::Sint32 | Type::Enum => Cow::Borrowed("i32"),
-            Type::Int64 | Type::Sfixed64 | Type::Sint64 => Cow::Borrowed("i64"),
-            Type::Bool => Cow::Borrowed("bool"),
-            Type::String => Cow::Borrowed("String"),
-            Type::Bytes => Cow::Borrowed("Vec<u8>"),
-            Type::Group | Type::Message => {
+            Type::FLOAT => Cow::Borrowed("f32"),
+            Type::DOUBLE => Cow::Borrowed("f64"),
+            Type::UINT32 | Type::FIXED32 => Cow::Borrowed("u32"),
+            Type::UINT64 | Type::FIXED64 => Cow::Borrowed("u64"),
+            Type::INT32 | Type::SFIXED32 | Type::SINT32 => Cow::Borrowed("i32"),
+            Type::INT64 | Type::SFIXED64 | Type::SINT64 => Cow::Borrowed("i64"),
+            Type::BOOL => Cow::Borrowed("bool"),
+            Type::STRING => Cow::Borrowed("String"),
+            Type::BYTES => Cow::Borrowed("Vec<u8>"),
+            Type::GROUP | Type::MESSAGE | Type::ENUM=> {
                 if let Some(ty) = self.well_known_type(field.type_name()) {
                     Cow::Borrowed(ty)
                 } else {
                     Cow::Owned(self.resolve_ident(field.type_name()))
                 }
             },
+            _ => unimplemented!(),
         }
     }
 
@@ -644,41 +709,42 @@ impl <'a> CodeGenerator<'a> {
 
     fn field_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
         match field.type_() {
-            Type::Float => Cow::Borrowed("float"),
-            Type::Double => Cow::Borrowed("double"),
-            Type::Int32 => Cow::Borrowed("int32"),
-            Type::Int64 => Cow::Borrowed("int64"),
-            Type::Uint32 => Cow::Borrowed("uint32"),
-            Type::Uint64 => Cow::Borrowed("uint64"),
-            Type::Sint32 => Cow::Borrowed("sint32"),
-            Type::Sint64 => Cow::Borrowed("sint64"),
-            Type::Fixed32 => Cow::Borrowed("fixed32"),
-            Type::Fixed64 => Cow::Borrowed("fixed64"),
-            Type::Sfixed32 => Cow::Borrowed("sfixed32"),
-            Type::Sfixed64 => Cow::Borrowed("sfixed64"),
-            Type::Bool => Cow::Borrowed("bool"),
-            Type::String => Cow::Borrowed("string"),
-            Type::Bytes => Cow::Borrowed("bytes"),
-            Type::Group => Cow::Borrowed("group"),
-            Type::Message => Cow::Borrowed("message"),
-            Type::Enum => Cow::Owned(format!("enumeration={:?}", self.resolve_ident(field.type_name()))),
+            Type::FLOAT => Cow::Borrowed("float"),
+            Type::DOUBLE => Cow::Borrowed("double"),
+            Type::INT32 => Cow::Borrowed("int32"),
+            Type::INT64 => Cow::Borrowed("int64"),
+            Type::UINT32 => Cow::Borrowed("uint32"),
+            Type::UINT64 => Cow::Borrowed("uint64"),
+            Type::SINT32 => Cow::Borrowed("sint32"),
+            Type::SINT64 => Cow::Borrowed("sint64"),
+            Type::FIXED32 => Cow::Borrowed("fixed32"),
+            Type::FIXED64 => Cow::Borrowed("fixed64"),
+            Type::SFIXED32 => Cow::Borrowed("sfixed32"),
+            Type::SFIXED64 => Cow::Borrowed("sfixed64"),
+            Type::BOOL => Cow::Borrowed("bool"),
+            Type::STRING => Cow::Borrowed("string"),
+            Type::BYTES => Cow::Borrowed("bytes"),
+            Type::GROUP => Cow::Borrowed("group"),
+            Type::MESSAGE => Cow::Borrowed("message"),
+            Type::ENUM => Cow::Owned(format!("enumeration={:?}", self.resolve_ident(field.type_name()))),
+            _ => unimplemented!(),
         }
     }
 
     fn map_value_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
         match field.type_() {
-            Type::Enum => Cow::Owned(format!("enumeration({})", self.resolve_ident(field.type_name()))),
+            Type::ENUM => Cow::Owned(format!("enumeration({})", self.resolve_ident(field.type_name()))),
             _ => self.field_type_tag(field),
         }
     }
 
     fn optional(&self, field: &FieldDescriptorProto) -> bool {
-        if field.label() != Label::Optional {
+        if field.label() != Label::OPTIONAL {
             return false;
         }
 
         match field.type_() {
-            Type::Message => true,
+            Type::MESSAGE => true,
             _ => self.syntax == Syntax::Proto2,
         }
     }
@@ -745,10 +811,10 @@ impl <'a> CodeGenerator<'a> {
 /// Returns `true` if the repeated field type can be packed.
 fn can_pack(field: &FieldDescriptorProto) -> bool {
         match field.type_() {
-            Type::Float   | Type::Double  | Type::Int32    | Type::Int64    |
-            Type::Uint32  | Type::Uint64  | Type::Sint32   | Type::Sint64   |
-            Type::Fixed32 | Type::Fixed64 | Type::Sfixed32 | Type::Sfixed64 |
-            Type::Bool    | Type::Enum => true,
+            Type::FLOAT   | Type::DOUBLE  | Type::INT32    | Type::INT64    |
+            Type::UINT32  | Type::UINT64  | Type::SINT32   | Type::SINT64   |
+            Type::FIXED32 | Type::FIXED64 | Type::SFIXED32 | Type::SFIXED64 |
+            Type::BOOL    | Type::ENUM => true,
             _ => false,
         }
 }

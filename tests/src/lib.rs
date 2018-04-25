@@ -226,15 +226,15 @@ mod tests {
                     nested_self: None,
                 },
             ],
-            p_i_e: 0,
+            p_i_e: foo::bar_baz::foo_bar_baz::StrawberryRhubarbPie::FOO,
         };
 
         // Test enum ident conversion.
-        let _ = foo::bar_baz::foo_bar_baz::StrawberryRhubarbPie::Foo;
-        let _ = foo::bar_baz::foo_bar_baz::StrawberryRhubarbPie::Bar;
-        let _ = foo::bar_baz::foo_bar_baz::StrawberryRhubarbPie::FooBar;
-        let _ = foo::bar_baz::foo_bar_baz::StrawberryRhubarbPie::FuzzBuster;
-        let _ = foo::bar_baz::foo_bar_baz::StrawberryRhubarbPie::NormalRustEnumCase;
+        let _ = foo::bar_baz::foo_bar_baz::StrawberryRhubarbPie::FOO;
+        let _ = foo::bar_baz::foo_bar_baz::StrawberryRhubarbPie::BAR;
+        let _ = foo::bar_baz::foo_bar_baz::StrawberryRhubarbPie::FOO_BAR;
+        let _ = foo::bar_baz::foo_bar_baz::StrawberryRhubarbPie::FUZZ_BUSTER;
+        let _ = foo::bar_baz::foo_bar_baz::StrawberryRhubarbPie::NORMAL_RUST_ENUM_CASE;
 
         let mut buf = Vec::new();
         msg.encode(&mut buf).expect("encode");
