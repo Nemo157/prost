@@ -687,6 +687,65 @@ pub mod message {
     }
 }
 
+pub mod enumeration {
+    use super::*;
+
+    pub fn encode<E, B>(tag: u32, value: &E, buf: &mut B)
+    where E: Into<i32> + Copy,
+          B: BufMut
+    {
+        encode_key(tag, WireType::LengthDelimited, buf);
+        encode_varint(Into::<i32>::into(*value) as u64, buf);
+    }
+
+    pub fn merge<E, B>(wire_type: WireType, value: &mut E, buf: &mut B) -> Result<(), DecodeError>
+    where E: From<i32>,
+          B: Buf
+    {
+        check_wire_type(WireType::Varint, wire_type)?;
+        let raw_value = decode_varint(buf)?;
+        *value = E::from(raw_value as i32);
+        Ok(())
+    }
+
+    pub fn encode_repeated<E, B>(tag: u32, values: &[E], buf: &mut B)
+    where E: Into<i32> + Copy,
+          B: BufMut
+    {
+         for value in values {
+             encode(tag, value, buf);
+         }
+    }
+
+    pub fn merge_repeated<E, B>(wire_type: WireType, values: &mut Vec<E>, buf: &mut B) -> Result<(), DecodeError>
+    where E: Copy + Into<i32> + From<i32> + Default,
+          B: Buf
+    {
+        check_wire_type(WireType::LengthDelimited, wire_type)?;
+        let mut value = E::default();
+        merge(WireType::LengthDelimited, &mut value, buf)?;
+        values.push(value);
+        Ok(())
+    }
+
+    #[inline]
+    pub fn encoded_len<E>(tag: u32, value: &E) -> usize
+        where E: Copy + Into<i32>
+    {
+        key_len(tag) + encoded_len_varint(Into::<i32>::into(*value) as u64)
+    }
+
+    #[inline]
+    pub fn encoded_len_repeated<E>(tag: u32, values: &[E]) -> usize
+        where E: Copy + Into<i32>
+    {
+        key_len(tag) * values.len()
+            + values.iter()
+                  .map(|value| encoded_len_varint(Into::<i32>::into(*value) as u64))
+                  .sum::<usize>()
+    }
+}
+
 /// Rust doesn't have a `Map` trait, so macros are currently the best way to be
 /// generic over `HashMap` and `BTreeMap`.
 macro_rules! map {
